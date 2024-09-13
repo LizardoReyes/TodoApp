@@ -15,15 +15,15 @@ class TaskRepository @Inject constructor(private val taskDao: TaskDao) {
     }
 
     suspend fun insertTask(taskModel: TaskModel) {
-        taskDao.insertTask(TaskEntity(taskModel.id, taskModel.task, taskModel.selected))
+        taskDao.insertTask(taskModel.toData())
     }
 
     suspend fun updateTask(taskModel: TaskModel) {
-        taskDao.updateTask(TaskEntity(taskModel.id, taskModel.task, taskModel.selected))
+        taskDao.updateTask(taskModel.toData())
     }
 
     suspend fun deleteTask(taskModel: TaskModel) {
-        taskDao.deleteTask(TaskEntity(taskModel.id, taskModel.task, taskModel.selected))
+        taskDao.deleteTask(taskModel.toData())
     }
 
     suspend fun getTaskById(id: Long): TaskModel {
@@ -35,4 +35,8 @@ class TaskRepository @Inject constructor(private val taskDao: TaskDao) {
     fun getAllTasks(): Flow<List<TaskModel>> {
         return tasks
     }
+}
+
+fun TaskModel.toData(): TaskEntity {
+    return TaskEntity(id, task, selected)
 }

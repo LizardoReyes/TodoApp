@@ -1,15 +1,16 @@
 package com.lizardoreyes.todoapp.addtask.ui
 
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.lizardoreyes.todoapp.addtask.domain.DeleteTaskUseCase
 import com.lizardoreyes.todoapp.addtask.domain.GetTasksUseCase
 import com.lizardoreyes.todoapp.addtask.domain.InsertTaskUseCase
-import com.lizardoreyes.todoapp.addtask.ui.TasksUiState.Success
+import com.lizardoreyes.todoapp.addtask.domain.UpdateTaskUseCase
+import com.lizardoreyes.todoapp.addtask.ui.TaskUiState.Success
 import com.lizardoreyes.todoapp.addtask.ui.model.TaskModel
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
@@ -18,20 +19,21 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@HiltViewModel
 class TasksViewModel @Inject constructor(
     private val insertTaskUseCase: InsertTaskUseCase,
+    private val updateTaskUseCase: UpdateTaskUseCase,
+    private val deleteTaskUseCase: DeleteTaskUseCase,
     getTasksUseCase: GetTasksUseCase,
 ) : ViewModel() {
 
-    private val uiState: StateFlow<TasksUiState> =
-        getTasksUseCase().map(::Success).catch { TasksUiState.Error(it) }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TasksUiState.Loading)
+    val uiState: StateFlow<TaskUiState> =
+        getTasksUseCase().map(::Success).catch { TaskUiState.Error(it) }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), TaskUiState.Loading)
 
     private val _showDialog = MutableLiveData<Boolean>()
     val showDialog: LiveData<Boolean> = _showDialog
 
-    private val _tasks = mutableStateListOf<TaskModel>()
-    val tasks: List<TaskModel> = _tasks
 
     fun onDialogClose() {
         _showDialog.value = false
@@ -39,7 +41,6 @@ class TasksViewModel @Inject constructor(
 
     fun onTasksCreated(task: String) {
         _showDialog.value = false
-        _tasks.add(TaskModel(task = task))
 
         viewModelScope.launch {
             insertTaskUseCase(TaskModel(task = task))
@@ -51,11 +52,14 @@ class TasksViewModel @Inject constructor(
     }
 
     fun onCheckBoxSelected(taskModel: TaskModel) {
-        val index = _tasks.indexOf(taskModel)
-        _tasks[index] = _tasks[index].copy(selected = !taskModel.selected)
+        viewModelScope.launch {
+            updateTaskUseCase(taskModel.copy(selected = !taskModel.selected))
+        }
     }
 
     fun onItemRemove(taskModel: TaskModel) {
-        _tasks.remove(taskModel)
+        viewModelScope.launch {
+            deleteTaskUseCase(taskModel)
+        }
     }
 }
